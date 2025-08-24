@@ -1,55 +1,59 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
+// notesRepo.js
+const fs = require('fs').promises;
+const path = require('path');
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const FILE = path.join(DATA_DIR, "notes.json");
+const DB_FILE = path.join(__dirname, 'data', 'notes.json'); // notesRepo.js fica na raiz
 
-// garante pasta + arquivo inicial
 async function ensureFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
   try {
-    await fs.access(FILE);
+    await fs.mkdir(path.dirname(DB_FILE), { recursive: true });
+    await fs.access(DB_FILE);
   } catch {
-    const initial = { seq: 1, items: [] };
-    await fs.writeFile(FILE, JSON.stringify(initial, null, 2));
+    await fs.writeFile(DB_FILE, '[]');
   }
 }
 
 async function readAll() {
   await ensureFile();
-  const raw = await fs.readFile(FILE, "utf8");
-  const data = JSON.parse(raw || "{}");
-  // sanity check mínimo
-  if (!Array.isArray(data.items) || typeof data.seq !== "number") {
-    return { seq: 1, items: [] };
+  const raw = await fs.readFile(DB_FILE, 'utf8');
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    // Se corromper, recomeça com array vazio
+    await fs.writeFile(DB_FILE, '[]');
+    return [];
   }
-  return data;
 }
 
-async function writeAll(data) {
-  await fs.writeFile(FILE, JSON.stringify(data, null, 2));
+async function writeAll(notes) {
+  await fs.writeFile(DB_FILE, JSON.stringify(notes, null, 2));
+}
+
+function nextId(notes) {
+  const max = notes.reduce((m, n) => Math.max(m, Number(n.id) || 0), 0);
+  return max + 1;
 }
 
 async function listNotes() {
-  const { items } = await readAll();
-  return items;
+  return await readAll();
 }
 
 async function addNote(text) {
-  const data = await readAll();
-  const note = { id: data.seq++, text, createdAt: new Date().toISOString() };
-  data.items.push(note);
-  await writeAll(data);
+  const notes = await readAll();
+  const note = { id: nextId(notes), text, createdAt: new Date().toISOString() };
+  notes.push(note);
+  await writeAll(notes);
   return note;
 }
 
 async function deleteNote(id) {
-  const data = await readAll();
-  const idx = data.items.findIndex(n => n.id === id);
-  if (idx === -1) return null;
-  const [removed] = data.items.splice(idx, 1);
-  await writeAll(data);
-  return removed;
+  const notes = await readAll();
+  const idx = notes.findIndex(n => Number(n.id) === Number(id));
+  if (idx === -1) return false;
+  notes.splice(idx, 1);
+  await writeAll(notes);
+  return true;
 }
 
 module.exports = { listNotes, addNote, deleteNote };

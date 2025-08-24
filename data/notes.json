@@ -1,6 +1,12 @@
-{
-  "seq": 0,
-  "items": [
-    
-  ]
-}
+[
+  {
+    "id": 1,
+    "text": "teste um aqui",
+    "createdAt": "2025-08-24T20:50:25.688Z"
+  },
+  {
+    "id": 2,
+    "text": "teste dois mesmo",
+    "createdAt": "2025-08-24T20:52:08.634Z"
+  }
+]
