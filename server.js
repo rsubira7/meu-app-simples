@@ -87,16 +87,15 @@ app.delete("/notes/:id", async (req, res) => {
   }
 });
 
-// 404 padrão
-app.use((req, res) => res.status(404).json({ error: "Rota não encontrada" }));
-
-module.exports = app;
-
 
 // Fallback para SPA (se precisar)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// 404 padrão
+app.use((req, res) => res.status(404).json({ error: "Rota não encontrada" }));
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
