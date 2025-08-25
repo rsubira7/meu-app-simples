@@ -1,10 +1,11 @@
 // === Config ===
 const API_BASE = ''; // mesma origem
+
 async function fetchNotes() {
   const res = await fetch(`${API_BASE}/notes`);
   if (!res.ok) throw new Error('Falha ao carregar notas');
   const data = await res.json();
-  // suporta tanto array quanto {items}
+  // aceita tanto array puro quanto { items: [...] }
   return Array.isArray(data) ? data : data.items;
 }
 
@@ -17,7 +18,6 @@ async function addNote(text) {
   if (!res.ok) throw new Error('Falha ao adicionar nota');
   return res.json();
 }
-
 
 // === Seletores ===
 const noteForm = document.getElementById("noteForm");
@@ -34,16 +34,16 @@ function escapeHtml(s) {
 async function loadNotes() {
   noteStatus.textContent = "Carregando notas…";
   try {
-    const res = await fetch(`${API}/notes`);
-    const data = await res.json();
-    noteList.innerHTML = data.items.map(n => `
+    const items = await fetchNotes();
+    noteList.innerHTML = items.map(n => `
       <li data-id="${n.id}">
         <span>${escapeHtml(n.text)}</span>
         <button class="delete">Excluir</button>
       </li>
     `).join("");
-    noteStatus.textContent = data.items.length ? "" : "Sem notas ainda.";
+    noteStatus.textContent = items.length ? "" : "Sem notas ainda.";
   } catch (e) {
+    console.error(e);
     noteStatus.textContent = "Falha ao carregar notas.";
   }
 }
@@ -55,20 +55,14 @@ noteForm?.addEventListener("submit", async (e) => {
   if (!text) return;
 
   noteStatus.textContent = "Enviando…";
-  const res = await fetch(`${API}/notes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text })
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    noteStatus.textContent = err.error || "Erro ao criar nota.";
-    return;
+  try {
+    await addNote(text);
+    noteText.value = "";
+    await loadNotes();
+  } catch (err) {
+    console.error(err);
+    noteStatus.textContent = "Erro ao criar nota.";
   }
-
-  noteText.value = "";
-  await loadNotes();
 });
 
 // === Deletar nota (delegação) ===
@@ -78,7 +72,7 @@ noteList?.addEventListener("click", async (e) => {
   const id = li?.dataset.id;
   if (!id) return;
 
-  const res = await fetch(`${API}/notes/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/notes/${id}`, { method: "DELETE" });
   if (res.ok) {
     li.remove();
     if (!noteList.children.length) noteStatus.textContent = "Sem notas ainda.";
