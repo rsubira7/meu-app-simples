@@ -1,5 +1,23 @@
 // === Config ===
-const API = "http://localhost:3000";
+const API_BASE = ''; // mesma origem
+async function fetchNotes() {
+  const res = await fetch(`${API_BASE}/notes`);
+  if (!res.ok) throw new Error('Falha ao carregar notas');
+  const data = await res.json();
+  // suporta tanto array quanto {items}
+  return Array.isArray(data) ? data : data.items;
+}
+
+async function addNote(text) {
+  const res = await fetch(`${API_BASE}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  if (!res.ok) throw new Error('Falha ao adicionar nota');
+  return res.json();
+}
+
 
 // === Seletores ===
 const noteForm = document.getElementById("noteForm");
