@@ -5,14 +5,18 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 
-// (Opcional p/ dev local file://) — CORS permissivo só no dev:
-const allowed = [ 'http://localhost:5173', 'http://localhost:3000', null ]; // null = file://
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowed.includes(origin)) return cb(null, true);
-    return cb(new Error('Not allowed by CORS'));
-  }
-}));
+// --- CORS: prod liberado; dev restrito ---
+const isProd = !!process.env.RENDER || process.env.NODE_ENV === 'production';
+
+if (isProd) {
+  // mesma origem no Render → não bloqueie
+  app.use(cors());
+} else {
+  const allowed = new Set(['http://localhost:5173', 'http://localhost:3000', null]); // null = file://
+  app.use(cors({
+    origin: (origin, cb) => (!origin || allowed.has(origin) ? cb(null, true) : cb(new Error('Not allowed by CORS')))
+  }));
+}
 
 // Servir front estático
 app.use(express.static(path.join(__dirname, 'public')));
@@ -88,14 +92,14 @@ app.delete("/notes/:id", async (req, res) => {
 });
 
 
-// Fallback para SPA (se precisar)
-app.get('*', (req, res) => {
+// Fallback da SPA ANTES do 404 e sem capturar /notes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/notes')) return next();
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 404 padrão
-app.use((req, res) => res.status(404).json({ error: "Rota não encontrada" }));
-
+// 404 para o que sobrar (principalmente API)
+app.use((req, res) => res.status(404).json({ error: 'Rota não encontrada' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
